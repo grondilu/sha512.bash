@@ -91,11 +91,11 @@ sha512()
     for (( j=0; j<80; j++ ))
     do
       SO=$(($(rotate $e 14)^$(rotate $e 18)^$(rotate $e 41)))
-      ch=$(($(($e&$f))^$(($((~$e))&$g))))
-      temp1=$(($hay+$SO+$ch+${k[$j]}+${w[$j]}))
+      ch=$((e&f^~e&g))
+      temp1=$((hay+SO+ch+${k[j]}+${w[j]}))
       SZ=$(($(rotate $a 28)^$(rotate $a 34)^$(rotate $a 39)))
-      maj=$(($(($a&$b))^$(($a&$c))^$(($b&$c))))
-      temp2=$(($SZ+$maj))
+      maj=$((a&b^a&c^b&c))
+      temp2=$((SZ+maj))
 
       hay=g
       g=f
