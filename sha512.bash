@@ -20,7 +20,7 @@ rotate()
 #this is an ugly hack, but it works and I couldn't think of another way to do this in pure bash
 lshft()
 {
-  local lshtmp=$(($(($1>>1))&0x7fffffffffffffff))
+  local lshtmp=$((($1>>1)&0x7fffffffffffffff))
   local tmp=$((lshtmp>>($2-1)))
 
   echo $tmp
@@ -57,7 +57,7 @@ sha512()
   done
   input_hex+="$(printf "%032x" "$(($input_len<<3))")"
 
-  echo DEBUG padding: $input_hex >&2
+  #echo DEBUG padding: $input_hex >&2
 
   # This is the 80 word message schedule array:
   declare -ai w
@@ -86,13 +86,13 @@ sha512()
     done
 
     # Initialize working variables to current hash value:
-    local -i a=${h[0]} b=${h[1]} c=${h[2]} d=${h[3]} e=${h[4]} f=${h[5]} g=${h[6]} hay=${h[7]}
+    local -i a=h[0] b=h[1] c=h[2] d=h[3] e=h[4] f=h[5] g=h[6] hay=h[7]
     # Compression function main loop:
     for (( j=0; j<80; j++ ))
     do
       SO=$(($(rotate $e 14)^$(rotate $e 18)^$(rotate $e 41)))
       ch=$((e&f^~e&g))
-      temp1=$((hay+SO+ch+${k[j]}+${w[j]}))
+      temp1=$((hay+SO+ch+k[j]+w[j]))
       SZ=$(($(rotate $a 28)^$(rotate $a 34)^$(rotate $a 39)))
       maj=$((a&b^a&c^b&c))
       temp2=$((SZ+maj))
@@ -119,8 +119,8 @@ sha512()
   done
 
   # Produce the final hash value (big-endian):
-  for (( i=0; i<8; i++ ))
-  do printf "%016x" ${h[i]}
+  for v in "${h[@]}"
+  do printf "%016x" $v
   done
   echo
 }
