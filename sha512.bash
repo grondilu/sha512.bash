@@ -31,7 +31,7 @@ sha512()
 {
   local input=$1 input_hex=''
   for (( i=0; i < ${#input}; i++ ))
-  do input_hex="$input_hex$(printf "%02x" "'${input:i:1}")"
+  do input_hex+="$(printf "%02x" "'${input:i:1}")"
   done
 
   # Yay! sha512 in pure bash
@@ -39,17 +39,8 @@ sha512()
   # pure bash = using only bash, no external applications. printf and echo are used, both of which are bash builtins
 
   # Initialize hash values
-  #(first 64 bits of the fractional parts of the square roots of the first 8 primes 2..19):
-  declare -ai h=(
-    0x6a09e667f3bcc908
-    0xbb67ae8584caa73b
-    0x3c6ef372fe94f82b
-    0xa54ff53a5f1d36f1
-    0x510e527fade682d1
-    0x9b05688c2b3e6c1f
-    0x1f83d9abfb41bd6b
-    0x5be0cd19137e2179
-  )
+  # (first 64 bits of the fractional parts of the square roots of the first 8 primes 2..19):
+  declare -ai h=(0x6a09e667f3bcc908 0xbb67ae8584caa73b 0x3c6ef372fe94f82b 0xa54ff53a5f1d36f1 0x510e527fade682d1 0x9b05688c2b3e6c1f 0x1f83d9abfb41bd6b 0x5be0cd19137e2179)
 
   # Initialize array of round constants
   # (first 64 bits of the fractional parts of the cube roots of the first 80 primes 2..409):
@@ -57,21 +48,22 @@ sha512()
 
   # Pad using MD-Compliant padding:
   local input_len=${#input}
-  local input_len_bin=$(echo -e "\x"$(printf "%x" $((input_len*8))))
-  local final_len=$((((input_len+128)>>7)<<7))
+  local final_len=$(( ((input_len+128)>>7) <<7 ))
 
-  pad_n=$(($final_len-$input_len))
-  input_hex=$input_hex'80'
+  local -i pad_n=final_len-input_len
+  input_hex+=80
   for (( i=1; i < pad_n - 16; i++ ))
-  do input_hex=$input_hex'00'
+  do input_hex+=00
   done
-  input_hex=$input_hex$(printf "%032x" "$(($input_len<<3))")
+  input_hex+="$(printf "%032x" "$(($input_len<<3))")"
+
+  echo DEBUG padding: $input_hex >&2
 
   # This is the 80 word message schedule array:
   declare -ai w
 
-  # Process the message in successive 512-bit chunks:
-  for (( i=0; i<(final_len<<1); i+=256 ))
+  # Process the message in successive 1024-bit chunks:
+  for (( i=0; i < (final_len<<1); i+=256 )) # 256 hex chars = 1024 bits
   do
     chunk=${input_hex:i:256}
 
@@ -90,19 +82,11 @@ sha512()
     do
       sz=$(($(rotate ${w[j-15]} 1)^$(rotate ${w[j-15]} 8)^$(lshft ${w[j-15]} 7)))
       so=$(($(rotate ${w[j-2]} 19)^$(rotate ${w[j-2]} 61)^$(lshft ${w[j-2]} 6)))
-      w[j]=$((${w[j-16]}+sz+${w[j-7]}+so))
+      w[j]=${w[j-16]}+sz+${w[j-7]}+so
     done
 
     # Initialize working variables to current hash value:
-    a=${h[0]}
-    b=${h[1]}
-    c=${h[2]}
-    d=${h[3]}
-    e=${h[4]}
-    f=${h[5]}
-    g=${h[6]}
-    hay=${h[7]}
-
+    local -i a=${h[0]} b=${h[1]} c=${h[2]} d=${h[3]} e=${h[4]} f=${h[5]} g=${h[6]} hay=${h[7]}
     # Compression function main loop:
     for (( j=0; j<80; j++ ))
     do
@@ -113,25 +97,25 @@ sha512()
       maj=$(($(($a&$b))^$(($a&$c))^$(($b&$c))))
       temp2=$(($SZ+$maj))
 
-      hay=$g
-      g=$f
-      f=$e
-      e=$((d+temp1))
-      d=$c
-      c=$b
-      b=$a
-      a=$((temp1+temp2))
+      hay=g
+      g=f
+      f=e
+      e=d+temp1
+      d=c
+      c=b
+      b=a
+      a=temp1+temp2
     done
 
     # Add the compressed chunk to the current hash value:
-    h[0]=$((${h[0]}+a))
-    h[1]=$((${h[1]}+b))
-    h[2]=$((${h[2]}+c))
-    h[3]=$((${h[3]}+d))
-    h[4]=$((${h[4]}+e))
-    h[5]=$((${h[5]}+f))
-    h[6]=$((${h[6]}+g))
-    h[7]=$((${h[7]}+hay))
+    h[0]+=a
+    h[1]+=b
+    h[2]+=c
+    h[3]+=d
+    h[4]+=e
+    h[5]+=f
+    h[6]+=g
+    h[7]+=hay
   done
 
   # Produce the final hash value (big-endian):
